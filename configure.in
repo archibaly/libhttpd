@@ -1,0 +1,59 @@
+# Configure template for libhttpd
+# When run through GNU autoconf it will generate the configure script.
+
+AC_INIT(site.mm.in)
+AC_CONFIG_HEADER(src/config.h)
+
+VERSION="0.1 ALPHA 1"
+AC_DEFINE_UNQUOTED(VERSION, "$VERSION")
+AC_SUBST(VERSION)
+
+
+echo "Configuring libhttpd"
+
+AC_ARG_WITH(ember, AS_HELP_STRING([--with-ember=/path/to/ember/installation],
+        [Include support for embedded Ember scripts]),
+        [EMBER_DIR=$withval], [EMBER_DIR=''])
+
+
+if test "$EMBER_DIR." != "."
+then
+	echo "Including support for Ember scripts."
+	echo "Ember installed in $EMBER_DIR"
+	HAVE_EMBER="#define HAVE_EMBER"
+	if test ! -f $EMBER_DIR/lib/libember.a
+	then
+        	echo "Error : You ember installation isn't complete."
+		echo "Missing $EMBER_DIR/lib/libember.a"
+		exit 1
+	fi
+	AC_DEFINE_UNQUOTED(HAVE_EMBER)
+	EMBER_LIB="-lember";
+fi
+
+AC_DEFINE_UNQUOTED(EMBER_DIR,$EMBER_DIR)
+AC_SUBST(HAVE_EMBER)
+AC_SUBST(EMBER_LIB)
+AC_SUBST(EMBER_DIR)
+
+AC_PROG_CC
+if test "$ac_cv_prog_CC" = "gcc"; 
+then
+	WALL=-Wall
+else
+	WALL=
+fi
+AC_DEFINE_UNQUOTED(WALL, "$WALL")
+AC_SUBST(WALL)
+
+AC_PROG_RANLIB
+
+AC_CHECK_HEADERS(string.h strings.h stdarg.h unistd.h)
+AC_HAVE_LIBRARY(socket)
+AC_HAVE_LIBRARY(nsl)
+AC_HAVE_LIBRARY(pthread)
+AC_OUTPUT(site.mm)
+echo
+echo "HTTPD Library Configuration complete"
+echo
+
