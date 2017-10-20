@@ -427,6 +427,7 @@ httpReq *httpdReadRequest(server, timeout, status)
 		{
 			/* Timeout */
 			*status = 0;
+			free(request);
 			return(NULL);
 		}
 		if (result > 0)
