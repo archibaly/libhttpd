@@ -250,10 +250,18 @@ int httpdSetVariableValue(server, request, name, value)
 	}
 }
 
-
-httpd *httpdCreate(host, port)
-	char	*host;
-	int	port;
+httpd *httpdCreate(host, port
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+		, key, crt)
+#else
+		)
+#endif
+	char		*host;
+	int		port;
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+	const char	*key;
+	const char	*crt;
+#endif
 {
 	httpd	*new;
 	int	sock,
@@ -275,6 +283,17 @@ httpd *httpdCreate(host, port)
 	new->content = (httpDir*)malloc(sizeof(httpDir));
 	bzero(new->content,sizeof(httpDir));
 	new->content->name = strdup("");
+
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+	if (key && crt)
+	{
+		if (!(new->ctx = _httpd_ssl_open(key, crt)))
+		{
+			free(new);
+			return NULL;
+		}
+	}
+#endif
 
 	/*
 	** Setup the socket
@@ -360,6 +379,9 @@ void httpdDestroy(server)
 		return;
 	if (server->serverHostname)
 		free(server->serverHostname);
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+	_httpd_ssl_destroy(server->ctx);
+#endif
 	free(server);
 }
 
@@ -446,6 +468,10 @@ httpReq *httpdReadRequest(server, timeout, status)
 		*request->clientAddr = 0;
 	request->readBufRemain = 0;
 	request->readBufPtr = NULL;
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+	if (server->ctx)
+		request->ssl = _httpd_ssl_accept(server->ctx, request->clientSock);
+#endif
 
 	/*
 	** Check the default ACL
@@ -511,10 +537,10 @@ httpReq *httpdReadRequest(server, timeout, status)
 				request->method = HTTP_POST;
 			if (request->method == 0)
 			{
-				_httpd_net_write(request->clientSock,
+				_httpd_net_write(request,
 				      HTTP_METHOD_ERROR,
 				      strlen(HTTP_METHOD_ERROR));
-				_httpd_net_write(request->clientSock, cp, 
+				_httpd_net_write(request, cp, 
 				      strlen(cp));
 				_httpd_writeErrorLog(server,request,
 					LEVEL_ERROR, "Invalid method received");
@@ -696,6 +722,9 @@ void httpdEndRequest(server, request)
 	request->variables = NULL;
 	shutdown(request->clientSock,2);
 	close(request->clientSock);
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+	_httpd_ssl_close(request->ssl);
+#endif
 	free(request);
 }
 
@@ -1065,7 +1094,7 @@ void httpdOutput(server, request, msg)
 	request->response.responseLength += strlen(buf);
 	if (request->response.headersSent == 0)
 		httpdSendHeaders(server, request);
-	_httpd_net_write(request->clientSock, buf, strlen(buf));
+	_httpd_net_write(request, buf, strlen(buf));
 }
 
 
@@ -1096,7 +1125,7 @@ void httpdPrintf(va_alist)
 		httpdSendHeaders(server, request);
 	vsnprintf(buf, HTTP_MAX_LEN, fmt, args);
 	request->response.responseLength += strlen(buf);
-	_httpd_net_write(request->clientSock, buf, strlen(buf));
+	_httpd_net_write(request, buf, strlen(buf));
 }
 
 

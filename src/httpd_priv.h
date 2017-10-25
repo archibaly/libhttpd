@@ -72,8 +72,8 @@ void _httpd_writeAccessLog __ANSI_PROTO((httpd*, httpReq*));
 void _httpd_writeErrorLog __ANSI_PROTO((httpd*, httpReq*, char*, char*));
 
 
-int _httpd_net_read __ANSI_PROTO((int, char*, int));
-int _httpd_net_write __ANSI_PROTO((int, char*, int));
+int _httpd_net_read __ANSI_PROTO((httpReq*, char*, int));
+int _httpd_net_write __ANSI_PROTO((httpReq*, char*, int));
 int _httpd_readBuf __ANSI_PROTO((httpd*, httpReq*, char*, int));
 int _httpd_readChar __ANSI_PROTO((httpd*, httpReq*, char*));
 int _httpd_readLine __ANSI_PROTO((httpd*, httpReq*, char*, int));
@@ -83,5 +83,14 @@ int _httpd_executeEmber __ANSI_PROTO((httpd*, httpReq*, char*));
 
 httpContent *_httpd_findContentEntry __ANSI_PROTO((httpd*, httpReq*, httpDir*, char*));
 httpDir *_httpd_findContentDir __ANSI_PROTO((httpd*, httpReq*, char*, int));
+
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+SSL_CTX *_httpd_ssl_open __ANSI_PROTO((const char *, const char *));
+void _httpd_ssl_destroy __ANSI_PROTO((SSL_CTX *));
+SSL *_httpd_ssl_accept __ANSI_PROTO((SSL_CTX *, int));
+int _httpd_ssl_recv __ANSI_PROTO((SSL *, char *, int));
+int _httpd_ssl_send __ANSI_PROTO((SSL *, const char *, int));
+void _httpd_ssl_close __ANSI_PROTO((SSL *));
+#endif
 
 #endif  /* LIB_HTTPD_PRIV_H */

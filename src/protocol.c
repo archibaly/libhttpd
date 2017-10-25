@@ -38,8 +38,8 @@
 #include "httpd_priv.h"
 
 
-int _httpd_net_read(sock, buf, len)
-	int	sock;
+int _httpd_net_read(request, buf, len)
+	httpReq	*request;
 	char	*buf;
 	int	len;
 {
@@ -49,7 +49,11 @@ int _httpd_net_read(sock, buf, len)
 #else
 	while(1)
 	{
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+		numBytes = _httpd_ssl_recv(request->ssl, buf, len);
+#else
 		numBytes = read(sock, buf, len);
+#endif
 		if (numBytes == -1 && errno == EINTR)
 		{
 			continue;
@@ -61,8 +65,8 @@ int _httpd_net_read(sock, buf, len)
 }
 
 
-int _httpd_net_write(sock, buf, len)
-	int	sock;
+int _httpd_net_write(request, buf, len)
+	httpReq	*request;
 	char	*buf;
 	int	len;
 {
@@ -75,7 +79,11 @@ int _httpd_net_write(sock, buf, len)
 #if defined(_WIN32) 
 		sent = send(sock, buf + offset, remain, 0);
 #else
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+		sent = _httpd_ssl_send(request->ssl, buf + offset, remain);
+#else
 		sent = write(sock, buf + offset, remain);
+#endif
 #endif
 		if (sent < 0)
 		{
@@ -95,7 +103,7 @@ int _httpd_readChar(server, request, cp)
 	if (request->readBufRemain == 0)
 	{
 		bzero(request->readBuf, HTTP_READ_BUF_LEN + 1);
-		request->readBufRemain = _httpd_net_read(request->clientSock, 
+		request->readBufRemain = _httpd_net_read(request, 
 			request->readBuf, HTTP_READ_BUF_LEN);
 		if (request->readBufRemain < 1)
 			return(0);
@@ -197,7 +205,7 @@ int _httpd_sendExpandedText(server, request, buf, bufLen)
 			/* 
 			** Nope.  Write the remainder and bail
 			*/
-			_httpd_net_write(request->clientSock, 
+			_httpd_net_write(request, 
 				textStart, bufLen - offset);
 			length += bufLen - offset;
 			offset += bufLen - offset;
@@ -208,7 +216,7 @@ int _httpd_sendExpandedText(server, request, buf, bufLen)
 		** Looks like there could be a variable.  Send the
 		** preceeding text and check it out
 		*/
-		_httpd_net_write(request->clientSock, textStart, 
+		_httpd_net_write(request, textStart, 
 			textEnd - textStart);
 		length += textEnd - textStart;
 		offset  += textEnd - textStart;
@@ -218,7 +226,7 @@ int _httpd_sendExpandedText(server, request, buf, bufLen)
 			/*
 			** Nope, false alarm.
 			*/
-			_httpd_net_write(request->clientSock, "$",1 );
+			_httpd_net_write(request, "$",1 );
 			length += 1;
 			offset += 1;
 			textStart = textEnd + 1;
@@ -235,7 +243,7 @@ int _httpd_sendExpandedText(server, request, buf, bufLen)
 			/*
 			** Variable name is too long
 			*/
-			_httpd_net_write(request->clientSock, "$", 1);
+			_httpd_net_write(request, "$", 1);
 			length += 1;
 			offset += 1;
 			textStart = textEnd + 1;
@@ -261,7 +269,7 @@ int _httpd_sendExpandedText(server, request, buf, bufLen)
 		/*
 		** Write the variables value and continue
 		*/
-		_httpd_net_write(request->clientSock, var->value, 
+		_httpd_net_write(request, var->value, 
 			strlen(var->value));
 		length += strlen(var->value);
 		textStart = varEnd + 2;
@@ -561,37 +569,37 @@ void _httpd_sendHeaders(server, request, contentLength, modTime)
 		return;
 
 	request->response.headersSent = 1;
-	_httpd_net_write(request->clientSock, "HTTP/1.0 ", 9);
-	_httpd_net_write(request->clientSock, request->response.response, 
+	_httpd_net_write(request, "HTTP/1.0 ", 9);
+	_httpd_net_write(request, request->response.response, 
 		strlen(request->response.response));
-	_httpd_net_write(request->clientSock, request->response.headers, 
+	_httpd_net_write(request, request->response.headers, 
 		strlen(request->response.headers));
 
 	time(&tmpTime);
 	_httpd_formatTimeString(timeBuf, tmpTime);
-	_httpd_net_write(request->clientSock,"Date: ", 6);
-	_httpd_net_write(request->clientSock, timeBuf, strlen(timeBuf));
-	_httpd_net_write(request->clientSock, "\n", 1);
+	_httpd_net_write(request,"Date: ", 6);
+	_httpd_net_write(request, timeBuf, strlen(timeBuf));
+	_httpd_net_write(request, "\n", 1);
 
-	_httpd_net_write(request->clientSock, "Connection: close\n", 18);
-	_httpd_net_write(request->clientSock, "Content-Type: ", 14);
-	_httpd_net_write(request->clientSock, request->response.contentType, 
+	_httpd_net_write(request, "Connection: close\n", 18);
+	_httpd_net_write(request, "Content-Type: ", 14);
+	_httpd_net_write(request, request->response.contentType, 
 		strlen(request->response.contentType));
-	_httpd_net_write(request->clientSock, "\n", 1);
+	_httpd_net_write(request, "\n", 1);
 
 	if (contentLength > 0)
 	{
-		_httpd_net_write(request->clientSock, "Content-Length: ", 16);
+		_httpd_net_write(request, "Content-Length: ", 16);
 		snprintf(tmpBuf, sizeof(tmpBuf), "%d", contentLength);
-		_httpd_net_write(request->clientSock, tmpBuf, strlen(tmpBuf));
-		_httpd_net_write(request->clientSock, "\n", 1);
+		_httpd_net_write(request, tmpBuf, strlen(tmpBuf));
+		_httpd_net_write(request, "\n", 1);
 
 		_httpd_formatTimeString(timeBuf, modTime);
-		_httpd_net_write(request->clientSock, "Last-Modified: ", 15);
-		_httpd_net_write(request->clientSock, timeBuf, strlen(timeBuf));
-		_httpd_net_write(request->clientSock, "\n", 1);
+		_httpd_net_write(request, "Last-Modified: ", 15);
+		_httpd_net_write(request, timeBuf, strlen(timeBuf));
+		_httpd_net_write(request, "\n", 1);
 	}
-	_httpd_net_write(request->clientSock, "\n", 1);
+	_httpd_net_write(request, "\n", 1);
 }
 
 httpDir *_httpd_findContentDir(server, request, dir, createFlag)
@@ -748,7 +756,7 @@ void _httpd_catFile(server, request, path, mode)
 		if (mode == HTTP_RAW_DATA)
 		{
 			request->response.responseLength += readLen;
-			_httpd_net_write(request->clientSock, buf, readLen);
+			_httpd_net_write(request, buf, readLen);
 		}
 		else
 		{
@@ -840,7 +848,7 @@ void _httpd_sendText(server, request, msg)
 	char	*msg;
 {
 	request->response.responseLength += strlen(msg);
-	_httpd_net_write(request->clientSock,msg,strlen(msg));
+	_httpd_net_write(request,msg,strlen(msg));
 }
 
 

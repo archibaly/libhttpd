@@ -48,10 +48,12 @@ AC_SUBST(WALL)
 
 AC_PROG_RANLIB
 
-AC_CHECK_HEADERS(string.h strings.h stdarg.h unistd.h)
+AC_CHECK_HEADERS(string.h strings.h stdarg.h unistd.h openssl/ssl.h openssl/err.h)
 AC_HAVE_LIBRARY(socket)
 AC_HAVE_LIBRARY(nsl)
 AC_HAVE_LIBRARY(pthread)
+AC_HAVE_LIBRARY(ssl)
+AC_HAVE_LIBRARY(crypto)
 AC_OUTPUT(site.mm)
 echo
 echo "HTTPD Library Configuration complete"

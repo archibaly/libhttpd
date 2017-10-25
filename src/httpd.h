@@ -21,7 +21,14 @@
 /*
 **  libhttpd Header File
 */
+#include "config.h"
 
+#ifdef HAVE_OPENSSL_SSL_H
+#  include <openssl/ssl.h>
+#endif
+#ifdef HAVE_OPENSSL_ERR_H
+#  include <openssl/err.h>
+#endif
 
 /***********************************************************************
 ** Standard header preamble.  Ensure singular inclusion, setup for
@@ -151,6 +158,9 @@ typedef	struct {
 		*readBufPtr;
 	httpRes response;
 	httpVar	*variables;
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+	SSL	*ssl;
+#endif
 } httpReq;
 
 
@@ -173,6 +183,9 @@ typedef struct {
 	httpAcl	*defaultAcl;
 	FILE	*accessLog,
 		*errorLog;
+#if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
+	SSL_CTX	*ctx;
+#endif
 	void	(*errorFunction304)(),
 		(*errorFunction403)(),
 		(*errorFunction404)();

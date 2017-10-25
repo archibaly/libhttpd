@@ -12,6 +12,12 @@
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
 
+/* Define if you have the <openssl.h/ssl.h> header file.  */
+#undef HAVE_OPENSSL_SSL_H
+
+/* Define if you have the <openssl/err.h> header file.  */
+#undef HAVE_OPENSSL_ERR_H
+
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL
 
@@ -23,3 +29,9 @@
 
 /* Define if you have the socket library (-lsocket).  */
 #undef HAVE_EMBER
+
+/* Define if you have the ssl library (-lssl).  */
+#undef HAVE_LIBSSL
+
+/* Define if you have the crypto library (-lcrypto).  */
+#undef HAVE_LIBCRYPTO
