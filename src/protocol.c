@@ -45,14 +45,17 @@ int _httpd_net_read(request, buf, len)
 {
 	int	numBytes;
 #if defined(_WIN32) 
-	return( recv(sock, buf, len, 0));
+	return( recv(request->clientSock, buf, len, 0));
 #else
 	while(1)
 	{
 #if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
-		numBytes = _httpd_ssl_recv(request->ssl, buf, len);
+		if (request->ssl)
+			numBytes = _httpd_ssl_recv(request->ssl, buf, len);
+		else
+			numBytes = read(request->clientSock, buf, len);
 #else
-		numBytes = read(sock, buf, len);
+		numBytes = read(request->clientSock, buf, len);
 #endif
 		if (numBytes == -1 && errno == EINTR)
 		{
@@ -77,12 +80,15 @@ int _httpd_net_write(request, buf, len)
 	while(remain)
 	{
 #if defined(_WIN32) 
-		sent = send(sock, buf + offset, remain, 0);
+		sent = send(request->clientSock, buf + offset, remain, 0);
 #else
 #if defined(HAVE_LIBSSL) && defined(HAVE_LIBCRYPTO)
-		sent = _httpd_ssl_send(request->ssl, buf + offset, remain);
+		if (request->ssl)
+			sent = _httpd_ssl_send(request->ssl, buf + offset, remain);
+		else
+			sent = write(request->clientSock, buf + offset, remain);
 #else
-		sent = write(sock, buf + offset, remain);
+		sent = write(request->clientSock, buf + offset, remain);
 #endif
 #endif
 		if (sent < 0)

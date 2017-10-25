@@ -238,7 +238,7 @@ int main(argc, argv)
 	/*
 	** Create a server and setup our logging
 	*/
-	server = httpdCreate(host,port);
+	server = httpdCreate(host,port,NULL,NULL);
 	if (server == NULL)
 	{
 		perror("Can't create server");
