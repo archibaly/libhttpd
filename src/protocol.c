@@ -526,7 +526,6 @@ void _httpd_formatTimeString(ptr, clock)
 	char	*ptr;
 	time_t	clock;
 {
-	static	char outputBuf[HTTP_TIME_STRING_LEN + 1];
 	struct 	tm *timePtr;
 	time_t	localClock;
 
